@@ -7,7 +7,7 @@ build-backend = "hatchling.build"
 
 
 [project]
-name = "todo-mcp-server"
+name = "todo-mcp-server-kit"
 version = "0.2.0"
 description = "MCP server for a plaintext todo list: CRUD + tags + search + stats Tools/Resources/Prompts, with a built-in browser dashboard."
 readme = "README.md"
@@ -43,13 +43,14 @@ dev = [
 
 [project.urls]
 # NOTE: assumes GitHub username `zzcodd` — confirm/replace before publishing.
-Homepage = "https://github.com/zzcodd/todo-mcp-server"
-Repository = "https://github.com/zzcodd/todo-mcp-server"
-Issues = "https://github.com/zzcodd/todo-mcp-server/issues"
+Homepage = "https://github.com/zzcodd/mcp_repos"
+Repository = "https://github.com/zzcodd/mcp_repos"
+Issues = "https://github.com/zzcodd/mcp_repos/issues"
 
 
 [project.scripts]
-todo-mcp-server = "todo_mcp.server:main"
+todo-mcp-server-kit = "todo_mcp.server:main"  # primary (matches PyPI package name)
+todo-mcp-server = "todo_mcp.server:main"     # alias
 todo-mcp = "todo_mcp.server:main"   # backward-compatible alias
 
 

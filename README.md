@@ -1,4 +1,4 @@
-# todo-mcp-server
+# todo-mcp-server-kit
 
 An [MCP](https://modelcontextprotocol.io) server for a plaintext todo list.
 It exposes a project-local `.claude/todos.md` through MCP **Tools** (create /
@@ -14,14 +14,14 @@ readable and version-controllable without this tool.
 Zero-install with [uv](https://docs.astral.sh/uv/) (recommended):
 
 ```bash
-uvx todo-mcp-server --project-root /path/to/your/project
+uvx todo-mcp-server-kit --project-root /path/to/your/project
 ```
 
 Or install from PyPI:
 
 ```bash
-pip install todo-mcp-server
-todo-mcp-server --project-root /path/to/your/project
+pip install todo-mcp-server-kit
+todo-mcp-server-kit --project-root /path/to/your/project
 ```
 
 The server speaks MCP over **stdio** — it is normally launched by an MCP
@@ -34,7 +34,7 @@ Todos live in `<project-root>/.claude/todos.md`.
 ## Register with Claude Code
 
 ```bash
-claude mcp add todo -s user -- uvx todo-mcp-server --project-root /path/to/your/project
+claude mcp add todo -s user -- uvx todo-mcp-server-kit --project-root /path/to/your/project
 ```
 
 Or, in any MCP client config (`mcpServers`):
@@ -44,7 +44,7 @@ Or, in any MCP client config (`mcpServers`):
   "mcpServers": {
     "todo": {
       "command": "uvx",
-      "args": ["todo-mcp-server", "--project-root", "/path/to/your/project"]
+      "args": ["todo-mcp-server-kit", "--project-root", "/path/to/your/project"]
     }
   }
 }
