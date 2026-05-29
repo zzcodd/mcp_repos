@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Todos</title>
+<style>
+  :root {
+    --bg:#f6f7f9; --card:#fff; --border:#e6e8eb; --line:#f0f1f3;
+    --text:#1f2328; --muted:#8b949e; --accent:#3b82f6;
+    --high:#e5484d; --med:#f0a020; --low:#3fb950;
+  }
+  * { box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","PingFang SC",sans-serif;
+         background:var(--bg); color:var(--text); margin:0; padding:2rem 1rem; }
+  .wrap { max-width:780px; margin:0 auto; }
+  header { display:flex; align-items:baseline; justify-content:space-between; }
+  h1 { font-size:1.5rem; font-weight:600; margin:0; }
+  .date { color:var(--muted); font-size:.85rem; }
+  .stats { color:var(--muted); font-size:.9rem; margin:.4rem 0 1rem; }
+  .stats b { color:var(--text); }
+  .overdue { color:var(--high); }
+  .toolbar { margin-bottom:1rem; }
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .seg button { border:0; background:var(--card); padding:.4rem .9rem; cursor:pointer;
+                font-size:.85rem; color:var(--muted); }
+  .seg button.active { background:var(--accent); color:#fff; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px;
+          overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+  .addbar { display:flex; gap:.5rem; padding:.75rem; border-bottom:1px solid var(--border); background:#fafbfc; }
+  .addbar input[type=text] { flex:1; }
+  input, select { border:1px solid var(--border); border-radius:6px; padding:.4rem .5rem;
+                  font-size:.9rem; font-family:inherit; background:#fff; color:var(--text); }
+  input:focus, select:focus { outline:2px solid var(--accent); outline-offset:-1px; }
+  .btn-add { border:0; border-radius:6px; padding:.4rem 1rem; cursor:pointer;
+             font-size:.9rem; background:var(--accent); color:#fff; }
+  table { width:100%; border-collapse:collapse; }
+  td, th { padding:.5rem .6rem; text-align:left; }
+  thead th { font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;
+             color:var(--muted); border-bottom:1px solid var(--border); font-weight:600; }
+  tbody tr { border-bottom:1px solid var(--line); }
+  tbody tr:last-child { border-bottom:0; }
+  tbody tr:hover { background:#fafbfc; }
+  tr.done .text-in { color:var(--muted); text-decoration:line-through; }
+  .id { color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .text-in { width:100%; border:1px solid transparent; background:transparent; border-radius:6px; }
+  .text-in:hover { border-color:var(--border); }
+  .prio-sel { font-weight:600; cursor:pointer; }
+  .prio-high { color:var(--high); } .prio-med { color:var(--med); } .prio-low { color:var(--low); }
+  .due-in { width:140px; }
+  .due-in.is-overdue { color:var(--high); font-weight:600; border-color:var(--high); }
+  .tags-in { width:140px; color:var(--accent); }
+  .tags-in::placeholder { color:var(--muted); }
+  #new-tags { width:130px; }
+  .del { background:transparent; border:0; cursor:pointer; color:var(--muted); font-size:1rem; }
+  .del:hover { color:var(--high); }
+  .empty { text-align:center; color:var(--muted); padding:2rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>📋 Todos</h1>
+    <span class="date" id="date"></span>
+  </header>
+  <div class="stats" id="stats"></div>
+  <div class="toolbar">
+    <div class="seg" id="filter">
+      <button data-f="all" class="active">全部</button>
+      <button data-f="open">未完成</button>
+      <button data-f="done">已完成</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="addbar">
+      <input type="text" id="new-text" placeholder="新增一条 todo… (回车提交)">
+      <select id="new-prio">
+        <option value="high">high</option>
+        <option value="med" selected>med</option>
+        <option value="low">low</option>
+      </select>
+      <input type="date" id="new-due">
+      <input type="text" id="new-tags" placeholder="标签 a,b">
+      <button class="btn-add" id="add-btn">+ 新增</button>
+    </div>
+    <table>
+      <thead>
+        <tr><th></th><th>ID</th><th>优先级</th><th>截止</th><th>内容</th><th>标签</th><th></th></tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+<script>
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('date').textContent = '☀ ' + today;
+  let filter = 'all';
+  let todos = [];
+
+  async function api(method, url, body) {
+    const opt = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opt.body = JSON.stringify(body);
+    const res = await fetch(url, opt);
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || ('HTTP ' + res.status));
+    return data;
+  }
+
+  const isOverdue = t => t.due && !t.done && t.due < today;
+
+  async function load() {
+    todos = (await api('GET', '/api/todos')).todos;
+    render();
+  }
+
+  function render() {
+    const total = todos.length;
+    const done = todos.filter(t => t.done).length;
+    const overdue = todos.filter(isOverdue).length;
+    document.getElementById('stats').innerHTML =
+      `<b>${total}</b> 条 · <b>${done}</b> 已完成 · <b>${total - done}</b> 未完成` +
+      (overdue ? ` · <span class="overdue"><b>${overdue}</b> 逾期</span>` : '');
+
+    const order = { high: 0, med: 1, low: 2 };
+    const rows = [...todos]
+      .sort((a, b) => (a.done - b.done) || (order[a.prio] - order[b.prio]) || (a.id - b.id))
+      .filter(t => filter === 'all' || (filter === 'open' && !t.done) || (filter === 'done' && t.done));
+
+    const tbody = document.getElementById('tbody');
+    tbody.innerHTML = '';
+    if (rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty">（没有符合条件的 todo）</td></tr>';
+      return;
+    }
+
+    for (const t of rows) {
+      const tr = document.createElement('tr');
+      if (t.done) tr.className = 'done';
+
+      const cbTd = document.createElement('td');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = t.done;
+      cb.onchange = () => toggle(t.id, cb.checked);
+      cbTd.appendChild(cb);
+
+      const idTd = document.createElement('td');
+      idTd.className = 'id'; idTd.textContent = '#' + t.id;
+
+      const prioTd = document.createElement('td');
+      const sel = document.createElement('select');
+      sel.className = 'prio-sel prio-' + t.prio;
+      for (const p of ['high', 'med', 'low']) {
+        const o = document.createElement('option');
+        o.value = p; o.textContent = p; o.selected = (p === t.prio);
+        sel.appendChild(o);
+      }
+      sel.onchange = () => edit(t.id, { priority: sel.value });
+      prioTd.appendChild(sel);
+
+      const dueTd = document.createElement('td');
+      const due = document.createElement('input');
+      due.type = 'date'; due.className = 'due-in'; due.value = t.due || '';
+      if (isOverdue(t)) due.classList.add('is-overdue');
+      due.onchange = () => edit(t.id, { due: due.value });
+      dueTd.appendChild(due);
+
+      const textTd = document.createElement('td');
+      const tx = document.createElement('input');
+      tx.type = 'text'; tx.className = 'text-in'; tx.value = t.text;
+      tx.onchange = () => { if (tx.value.trim()) edit(t.id, { text: tx.value.trim() }); };
+      textTd.appendChild(tx);
+
+      const tagsTd = document.createElement('td');
+      const tg = document.createElement('input');
+      tg.type = 'text'; tg.className = 'tags-in'; tg.placeholder = '—';
+      tg.value = (t.tags || []).join(',');
+      tg.onchange = () => edit(t.id, { tags: tg.value });
+      tagsTd.appendChild(tg);
+
+      const delTd = document.createElement('td');
+      const del = document.createElement('button');
+      del.className = 'del'; del.textContent = '🗑'; del.title = '删除';
+      del.onclick = () => remove(t.id);
+      delTd.appendChild(del);
+
+      tr.append(cbTd, idTd, prioTd, dueTd, textTd, tagsTd, delTd);
+      tbody.appendChild(tr);
+    }
+  }
+
+  async function add() {
+    const textEl = document.getElementById('new-text');
+    const text = textEl.value.trim();
+    if (!text) return;
+    await api('POST', '/api/add', {
+      text,
+      priority: document.getElementById('new-prio').value,
+      due: document.getElementById('new-due').value,
+      tags: document.getElementById('new-tags').value,
+    });
+    textEl.value = '';
+    document.getElementById('new-due').value = '';
+    document.getElementById('new-tags').value = '';
+    await load();
+    textEl.focus();
+  }
+  const toggle = (id, done) => api('POST', '/api/toggle', { id, done }).then(load);
+  const edit = (id, fields) => api('POST', '/api/edit', Object.assign({ id }, fields)).then(load);
+  const remove = id => api('POST', '/api/delete', { id }).then(load);
+
+  document.getElementById('add-btn').onclick = add;
+  document.getElementById('new-text').addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
+  document.getElementById('filter').addEventListener('click', e => {
+    if (e.target.tagName !== 'BUTTON') return;
+    filter = e.target.dataset.f;
+    document.querySelectorAll('#filter button').forEach(b => b.classList.toggle('active', b === e.target));
+    render();
+  });
+
+  load().catch(e => {
+    document.getElementById('tbody').innerHTML =
+      '<tr><td colspan="7" class="empty">加载失败：' + e.message + '</td></tr>';
+  });
+</script>
+</body>
+</html>
