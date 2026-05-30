@@ -1,5 +1,3 @@
-# Repo-wide ignores (each server may add its own .gitignore too)
-
 # Python
 __pycache__/
 *.py[cod]
@@ -19,3 +17,8 @@ venv/
 
 # Editor local history
 .history/
+
+# Personal learning docs — kept local, not published
+docs/NOTES.md
+docs/MVP_SPEC.md
+docs/V2_SPEC.md

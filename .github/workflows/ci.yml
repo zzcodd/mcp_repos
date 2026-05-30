@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+# All steps run inside the todo-mcp-server subdirectory (monorepo layout).
+defaults:
+  run:
+    working-directory: todo-mcp-server
+
 jobs:
   test:
     runs-on: ubuntu-latest
